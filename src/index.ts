@@ -2,6 +2,8 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import express, { Request, Response } from "express";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
@@ -730,15 +732,52 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the server with stdio transport
+// Start the server using either stdio (default) or SSE over HTTP if PORT is set
 async function main() {
   try {
-    const transport = new StdioServerTransport();
+    const port = process.env.PORT;
 
-    logger.info("Starting Redash MCP server...");
-    await server.connect(transport);
-    logger.setServer(server);
-    logger.info("Redash MCP server connected!");
+    if (port) {
+      const app = express();
+      app.use(express.json());
+
+      let transport: SSEServerTransport | null = null;
+
+      app.get("/sse", async (_req: Request, res: Response) => {
+        if (transport) {
+          res.status(409).send("Server already connected");
+          return;
+        }
+
+        transport = new SSEServerTransport("/message", res);
+        transport.onclose = () => {
+          transport = null;
+        };
+
+        logger.info("Starting Redash MCP server (SSE)...");
+        await server.connect(transport);
+        logger.setServer(server);
+        logger.info("Redash MCP server connected!");
+      });
+
+      app.post("/message", async (req: Request, res: Response) => {
+        if (!transport) {
+          res.status(404).send("No active session");
+          return;
+        }
+        await transport.handlePostMessage(req, res, req.body);
+      });
+
+      app.listen(parseInt(port, 10), () => {
+        logger.info(`HTTP server listening on port ${port}`);
+      });
+    } else {
+      const transport = new StdioServerTransport();
+      logger.info("Starting Redash MCP server...");
+      await server.connect(transport);
+      logger.setServer(server);
+      logger.info("Redash MCP server connected!");
+    }
   } catch (error) {
     logger.error(`Failed to start server: ${error}`);
     process.exit(1);

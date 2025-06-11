@@ -32,6 +32,7 @@ The server requires the following environment variables:
 Optional variables:
 - `REDASH_TIMEOUT`: Timeout for API requests in milliseconds (default: 30000)
 - `REDASH_MAX_RESULTS`: Maximum number of results to return (default: 1000)
+- `PORT`: Run the server over HTTP using SSE on the specified port instead of STDIO
 
 ## Installation
 
@@ -60,6 +61,10 @@ Optional variables:
 5. Start the server:
    ```bash
    npm start
+   ```
+   To run over HTTP instead of stdio, set a `PORT` environment variable:
+   ```bash
+   PORT=3000 npm start
    ```
 
 ## Usage with Claude for Desktop
