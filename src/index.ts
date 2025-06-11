@@ -3,7 +3,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import express from "express";
+import express, { Request, Response } from "express";
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
@@ -743,7 +743,7 @@ async function main() {
 
       let transport: SSEServerTransport | null = null;
 
-      app.get("/sse", async (_req, res) => {
+      app.get("/sse", async (_req: Request, res: Response) => {
         if (transport) {
           res.status(409).send("Server already connected");
           return;
@@ -760,7 +760,7 @@ async function main() {
         logger.info("Redash MCP server connected!");
       });
 
-      app.post("/message", async (req, res) => {
+      app.post("/message", async (req: Request, res: Response) => {
         if (!transport) {
           res.status(404).send("No active session");
           return;
